@@ -1,0 +1,98 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jun  4 21:56:50 2019
+
+@author: Shubh
+"""
+import glob
+import cv2 as cv
+import face_recognition
+import numpy as np
+from tkinter import simpledialog,messagebox
+import tkinter as tk
+def faceRecognize():
+    path = glob.glob("D:\\imageSet\\*.jpg")
+    known_face_encodings=[]
+    known_face_names=[]
+    
+    for p in path:
+        img=face_recognition.load_image_file(p)
+        known_face_encodings.append(face_recognition.face_encodings(img)[0])
+        temp=p.split('\\')
+        known_face_names.append(temp[2][:-4])
+    
+    face_locations=[]
+    face_names=[]
+    face_encodings=[]
+    process_this_frame=True
+    cap=cv.VideoCapture(0)
+    while True:
+        ret,frame=cap.read()
+        small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        rgb_small_frame = small_frame[:, :, ::-1]
+        
+        if process_this_frame:
+            face_locations=face_recognition.face_locations(rgb_small_frame)
+            face_encodings=face_recognition.face_encodings(rgb_small_frame,face_locations)
+            
+            face_names=[]
+            for face_encoding in face_encodings:
+                matches=face_recognition.compare_faces(known_face_encodings,face_encoding)
+                name='unknown'
+                face_distances=face_recognition.face_distance(known_face_encodings,face_encoding)
+                best_match_index=np.argmin(face_distances)
+                
+                if matches[best_match_index]:
+                    name=known_face_names[best_match_index]
+                
+                face_names.append(name)
+        process_this_frame= not process_this_frame
+                
+        for (top,right,bottom,left),name in zip(face_locations,face_names):
+                    top*=4
+                    right*=4
+                    bottom*=4
+                    left*=4
+                    cv.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+                    cv.rectangle(frame,(left,bottom-35),(right,bottom),(0,0,255),cv.FILLED)
+                    font=cv.FONT_HERSHEY_DUPLEX
+                    cv.putText(frame,name,(left+6,bottom-6),font,1.0,(255,255,255),1)
+            
+        cv.imshow('video',frame)
+            
+        if cv.waitKey(1) & 0xFF==ord('q'):
+                    break
+                
+    
+    cv.destroyAllWindows()
+    cap.release()
+
+
+
+def registerFace():
+    messagebox.showinfo("Info","Press c to capture, Press q to quit")
+    cap=cv.VideoCapture(0)
+    while True:
+        ret,img=cap.read()
+        cv.imshow('Set Face',img)
+        if cv.waitKey(1) & 0xFF==ord('c'):
+            answer=simpledialog.askstring("Name","Enter your name",parent=window )
+            
+            if answer is not None:
+                cv.imwrite('D:\\imageSet\\'+answer.strip()+'.jpg',img)
+                messagebox.showinfo("Done","Face Taken. You will be recognized");
+                break
+        if cv.waitKey(1) & 0xFF==ord('q'):
+            break
+    cv.destroyAllWindows()
+    cap.release()
+    
+
+window=tk.Tk()
+window.title("Face Recognition by- SD")
+window.geometry("500x500")
+tk.Button(window,text="Recognize",width=15,command=faceRecognize).pack()
+tk.Button(window,text='Register Face',width=12,command=registerFace).pack()
+
+window.mainloop()
+
